@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-267485732523303340
+--- !u!114 &-1681985300867237231
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -23,7 +23,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: DefaultHDMaterial Variant 2
+  m_Name: DefaultHDMaterial Variant 3
   m_Shader: {fileID: 4800000, guid: 6e4ae4064600d784cac1e41a9e6f2e59, type: 3}
   m_Parent: {fileID: 2100000, guid: 73c176f402d2c2f4d929aa5da7585d17, type: 2}
   m_ModifiedSerializedProperties: 0
@@ -50,10 +50,9 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
-    m_Floats:
-    - _Metallic: 0
+    m_Floats: []
     m_Colors:
-    - _BaseColor: {r: 0.60825133, g: 1, b: 0.25943398, a: 1}
-    - _Color: {r: 0.60825133, g: 1, b: 0.25943395, a: 1}
+    - _BaseColor: {r: 0.62403405, g: 0.764151, b: 0.4577697, a: 1}
+    - _Color: {r: 0.624034, g: 0.764151, b: 0.45776963, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
