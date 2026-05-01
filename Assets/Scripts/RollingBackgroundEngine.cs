@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Parallax scrolling background engine with tiling ground and multi-layer mountains.
+/// Parallax scrolling background engine with tiling ground, train tracks, and multi-layer mountains.
 /// 
 /// KEY DESIGN:
 ///   - Each mountain layer owns a "spawn frontier" (nextSpawnX). Every frame that frontier
@@ -10,12 +10,12 @@ using System.Collections.Generic;
 ///     (camRight + spawnAheadOfCamera) we plant a mountain and push the frontier right by
 ///     a random spacing. This replaces the fragile fixedMountainCount approach and can
 ///     never produce burst-spawns or gaps.
-///   - Ground uses the same pattern: track the rightmost tile, extend while its right edge
+///   - Ground and Tracks use the same pattern: track the rightmost tile, extend while its right edge
 ///     is inside camRight + spawnBuffer. No maxPieces cap to cause cut-offs.
 ///   - Pooling is built-in (per-layer, per-prefab queues) so no external pool manager is needed.
 /// 
 /// SETUP:
-///   1. Assign groundPrefab (any GameObject with a SpriteRenderer or Collider for width measurement).
+///   1. Assign groundPrefab and trackPrefab (any GameObject with a SpriteRenderer or Collider for width measurement).
 ///   2. Add one MountainLayerConfig per depth layer, assign prefabs arrays.
 ///   3. Tune parallaxSpeed, spacing, yPosition and tint per layer.
 ///   Nothing else is required.
@@ -42,6 +42,8 @@ public class RollingBackgroundEngine : MonoBehaviour
     [SerializeField] private GameObject groundPrefab;
     [SerializeField] private float groundY = -4f;
     [SerializeField] private float groundZ = 0f;
+    [Tooltip("Rotation for ground tiles (Euler angles in degrees).")]
+    [SerializeField] private Vector3 groundRotation = Vector3.zero;
     [Tooltip("Spawn tiles this many units ahead of the camera's right edge.")]
     [SerializeField] private float groundSpawnBuffer = 2f;
     [Tooltip("Despawn tiles this many units behind the camera's left edge.")]
@@ -50,6 +52,27 @@ public class RollingBackgroundEngine : MonoBehaviour
              "ground mesh (e.g. ProceduralGroundGenerator) whose mesh doesn't exist on the prefab asset. " +
              "Leave at 0 to auto-detect from the prefab's SpriteRenderer or MeshFilter.")]
     [SerializeField] private float groundTileWidthOverride = 0f;
+
+    // ── Train Tracks ─────────────────────────────────────────────────────────────
+
+    [Header("Train Tracks")]
+    [Tooltip("Enable/disable the train track spawning system.")]
+    [SerializeField] private bool enableTracks = true;
+    [Tooltip("Prefab to tile for train tracks. Must have a SpriteRenderer (or Collider) so width can be read.")]
+    [SerializeField] private GameObject trackPrefab;
+    [SerializeField] private float trackY = -3f;
+    [SerializeField] private float trackZ = 0.1f;
+    [Tooltip("Rotation for track tiles (Euler angles in degrees).")]
+    [SerializeField] private Vector3 trackRotation = Vector3.zero;
+    [Tooltip("Spawn track tiles this many units ahead of the camera's right edge.")]
+    [SerializeField] private float trackSpawnBuffer = 2f;
+    [Tooltip("Despawn track tiles this many units behind the camera's left edge.")]
+    [SerializeField] private float trackDespawnBuffer = 4f;
+    [Tooltip("Override track tile width (world units). Leave at 0 to auto-detect.")]
+    [SerializeField] private float trackTileWidthOverride = 0f;
+    [Tooltip("Speed multiplier for tracks relative to ground. 1 = same speed, 0.9 = slightly slower (parallax).")]
+    [Range(0f, 2f)]
+    [SerializeField] private float trackSpeedMultiplier = 1f;
 
     // ── Mountain layers ───────────────────────────────────────────────────────────
 
@@ -65,6 +88,7 @@ public class RollingBackgroundEngine : MonoBehaviour
             zVariation          = 1f,
             spawnAheadOfCamera  = 10f,
             despawnBehindCamera = 15f,
+            useDensitySlider    = false,
             minSpacing          = 8f,
             maxSpacing          = 15f,
             scaleMultiplier     = Vector3.one,
@@ -85,6 +109,7 @@ public class RollingBackgroundEngine : MonoBehaviour
             zVariation          = 0.5f,
             spawnAheadOfCamera  = 6f,
             despawnBehindCamera = 10f,
+            useDensitySlider    = false,
             minSpacing          = 5f,
             maxSpacing          = 10f,
             scaleMultiplier     = Vector3.one,
@@ -105,6 +130,7 @@ public class RollingBackgroundEngine : MonoBehaviour
             zVariation          = 0.2f,
             spawnAheadOfCamera  = 4f,
             despawnBehindCamera = 7f,
+            useDensitySlider    = false,
             minSpacing          = 3f,
             maxSpacing          = 7f,
             scaleMultiplier     = Vector3.one,
@@ -158,9 +184,23 @@ public class RollingBackgroundEngine : MonoBehaviour
         [Tooltip("Remove mountains this far behind the camera's left edge.")]
         public float despawnBehindCamera = 8f;
 
-        [Header("Spacing")]
-        public float minSpacing = 3f;
-        public float maxSpacing = 8f;
+        [Header("Spacing / Density")]
+        [Tooltip("Enable to use the density slider for automatic spacing calculation.\n" +
+                 "Disable to use the manual Min/Max Spacing fields below directly.")]
+        public bool useDensitySlider = false;
+
+        [Tooltip("How dense should this layer be?\n" +
+                 "0.0 = extremely sparse (few objects, far apart)\n" +
+                 "0.5 = normal/balanced\n" +
+                 "1.0 = extremely dense (many objects, packed close)\n\n" +
+                 "Only used when 'Use Density Slider' is enabled.")]
+        [Range(0f, 1f)]
+        public float spawnDensity = 0.5f;
+
+        [Tooltip("Minimum spacing between objects (world units).")]
+        public float minSpacing = 5f;
+        [Tooltip("Maximum spacing between objects (world units).")]
+        public float maxSpacing = 10f;
 
         [Header("Scale")]
         [Tooltip("Multiplies each axis of the prefab's own localScale.\n" +
@@ -184,6 +224,37 @@ public class RollingBackgroundEngine : MonoBehaviour
         [Min(1)]
         [Tooltip("How many different prefabs must appear before the same one can repeat.")]
         public int minUniqueBeforeRepeat = 2;
+
+        // ── Internal spacing calculation ──────────────────────────────────────
+        [HideInInspector] public float calculatedMinSpacing;
+        [HideInInspector] public float calculatedMaxSpacing;
+        [HideInInspector] public bool wasUsingDensitySlider;
+
+        /// <summary>
+        /// Returns the effective min spacing based on the current mode.
+        /// If useDensitySlider is enabled, returns the auto-calculated value.
+        /// If disabled, returns the manual minSpacing value.
+        /// </summary>
+        public float GetMinSpacing()
+        {
+            if (useDensitySlider)
+                return calculatedMinSpacing;
+            else
+                return minSpacing;
+        }
+
+        /// <summary>
+        /// Returns the effective max spacing based on the current mode.
+        /// If useDensitySlider is enabled, returns the auto-calculated value.
+        /// If disabled, returns the manual maxSpacing value.
+        /// </summary>
+        public float GetMaxSpacing()
+        {
+            if (useDensitySlider)
+                return calculatedMaxSpacing;
+            else
+                return maxSpacing;
+        }
     }
 
     private struct ActiveMountain
@@ -202,7 +273,12 @@ public class RollingBackgroundEngine : MonoBehaviour
     // Ground
     private Queue<GameObject>       groundPool   = new Queue<GameObject>();
     private List<GameObject>        activeGround = new List<GameObject>();
-    private float                   tileWidth;         // world-space width of one ground tile
+    private float                   groundTileWidth;
+
+    // Train Tracks
+    private Queue<GameObject>       trackPool   = new Queue<GameObject>();
+    private List<GameObject>        activeTracks = new List<GameObject>();
+    private float                   trackTileWidth;
 
     // Mountains — arrays indexed by layer
     private Queue<GameObject>[][]   mountainPools;     // [layer][prefabIndex]
@@ -219,8 +295,11 @@ public class RollingBackgroundEngine : MonoBehaviour
         if (mainCamera == null)
             mainCamera = Camera.main;
 
+        CalculateAllLayerSpacings();
+
         RefreshCameraBounds();
         InitialiseGround();
+        InitialiseTracks();
         InitialiseMountains();
     }
 
@@ -231,9 +310,10 @@ public class RollingBackgroundEngine : MonoBehaviour
         RefreshCameraBounds();
 
         float dt    = Time.deltaTime;
-        float speed = scrollSpeed * speedMultiplier * dt;   // units this frame
+        float speed = scrollSpeed * speedMultiplier * dt;
 
         TickGround(speed);
+        TickTracks(speed);
         TickMountains(speed);
     }
 
@@ -262,25 +342,23 @@ public class RollingBackgroundEngine : MonoBehaviour
             return;
         }
 
-        // Use manual override if set, otherwise auto-detect from the prefab.
-        tileWidth = groundTileWidthOverride > 0f
+        groundTileWidth = groundTileWidthOverride > 0f
             ? groundTileWidthOverride
             : MeasurePrefabWidth(groundPrefab);
 
-        if (tileWidth <= 0f)
+        if (groundTileWidth <= 0f)
         {
             Debug.LogError(
                 "[RollingBG] Cannot measure ground tile width. " +
                 "For 3D procedural ground (e.g. ProceduralGroundGenerator) the mesh is built at runtime " +
                 "so it cannot be read from the prefab asset — set 'Ground Tile Width Override' manually.", this);
-            tileWidth = 10f;
+            groundTileWidth = 10f;
         }
 
-        // Flood-fill from left buffer to right buffer.
-        float startX = Mathf.Floor((camLeft - groundDespawnBuffer) / tileWidth) * tileWidth;
-        float endX   = camRight + groundSpawnBuffer + tileWidth;
+        float startX = Mathf.Floor((camLeft - groundDespawnBuffer) / groundTileWidth) * groundTileWidth;
+        float endX   = camRight + groundSpawnBuffer + groundTileWidth;
 
-        for (float x = startX; x < endX; x += tileWidth)
+        for (float x = startX; x < endX; x += groundTileWidth)
             SpawnGroundTileAt(x);
     }
 
@@ -300,11 +378,10 @@ public class RollingBackgroundEngine : MonoBehaviour
         }
 
         // 2. Extend on the right while needed.
-        //    We loop because a large speed burst could require multiple tiles.
         float rightmost = RightmostGroundCentreX();
-        while (rightmost + tileWidth * 0.5f < camRight + groundSpawnBuffer)
+        while (rightmost + groundTileWidth * 0.5f < camRight + groundSpawnBuffer)
         {
-            rightmost += tileWidth;
+            rightmost += groundTileWidth;
             SpawnGroundTileAt(rightmost);
         }
 
@@ -313,7 +390,7 @@ public class RollingBackgroundEngine : MonoBehaviour
         {
             if (activeGround[i] == null) { activeGround.RemoveAt(i); continue; }
 
-            float rightEdge = activeGround[i].transform.position.x + tileWidth * 0.5f;
+            float rightEdge = activeGround[i].transform.position.x + groundTileWidth * 0.5f;
             if (rightEdge < camLeft - groundDespawnBuffer)
             {
                 ReturnToPool(groundPool, activeGround[i]);
@@ -326,13 +403,105 @@ public class RollingBackgroundEngine : MonoBehaviour
     {
         GameObject tile = GetFromPool(groundPool, groundPrefab);
         tile.transform.position = new Vector3(centreX, groundY, groundZ);
+        tile.transform.rotation = Quaternion.Euler(groundRotation);
         activeGround.Add(tile);
     }
 
     float RightmostGroundCentreX()
     {
-        float max = camLeft - tileWidth;    // safe floor if list is empty
+        float max = camLeft - groundTileWidth;
         foreach (var t in activeGround)
+            if (t != null && t.transform.position.x > max)
+                max = t.transform.position.x;
+        return max;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  TRAIN TRACKS — INITIALISE
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    void InitialiseTracks()
+    {
+        if (!enableTracks) return;
+
+        if (trackPrefab == null)
+        {
+            Debug.LogWarning("[RollingBG] Track system is enabled but trackPrefab is not assigned.", this);
+            return;
+        }
+
+        trackTileWidth = trackTileWidthOverride > 0f
+            ? trackTileWidthOverride
+            : MeasurePrefabWidth(trackPrefab);
+
+        if (trackTileWidth <= 0f)
+        {
+            Debug.LogError(
+                "[RollingBG] Cannot measure track tile width. " +
+                "Set 'Track Tile Width Override' manually.", this);
+            trackTileWidth = 10f;
+        }
+
+        float startX = Mathf.Floor((camLeft - trackDespawnBuffer) / trackTileWidth) * trackTileWidth;
+        float endX   = camRight + trackSpawnBuffer + trackTileWidth;
+
+        for (float x = startX; x < endX; x += trackTileWidth)
+            SpawnTrackTileAt(x);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  TRAIN TRACKS — TICK (move → spawn → despawn)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    void TickTracks(float speed)
+    {
+        if (!enableTracks || trackPrefab == null) return;
+
+        float trackSpeed = speed * trackSpeedMultiplier;
+
+        // 1. Move all track tiles left.
+        for (int i = 0; i < activeTracks.Count; i++)
+        {
+            if (activeTracks[i] == null) continue;
+            Vector3 p = activeTracks[i].transform.position;
+            p.x -= trackSpeed;
+            activeTracks[i].transform.position = p;
+        }
+
+        // 2. Extend on the right while needed.
+        float rightmost = RightmostTrackCentreX();
+        while (rightmost + trackTileWidth * 0.5f < camRight + trackSpawnBuffer)
+        {
+            rightmost += trackTileWidth;
+            SpawnTrackTileAt(rightmost);
+        }
+
+        // 3. Cull from the left.
+        for (int i = activeTracks.Count - 1; i >= 0; i--)
+        {
+            if (activeTracks[i] == null) { activeTracks.RemoveAt(i); continue; }
+
+            float rightEdge = activeTracks[i].transform.position.x + trackTileWidth * 0.5f;
+            if (rightEdge < camLeft - trackDespawnBuffer)
+            {
+                ReturnToPool(trackPool, activeTracks[i]);
+                activeTracks.RemoveAt(i);
+            }
+        }
+    }
+
+    void SpawnTrackTileAt(float centreX)
+    {
+        GameObject tile = GetFromPool(trackPool, trackPrefab);
+        tile.transform.position = new Vector3(centreX, trackY, trackZ);
+        tile.transform.rotation = Quaternion.Euler(trackRotation);
+        activeTracks.Add(tile);
+    }
+
+    float RightmostTrackCentreX()
+    {
+        float max = camLeft - trackTileWidth;
+        foreach (var t in activeTracks)
             if (t != null && t.transform.position.x > max)
                 max = t.transform.position.x;
         return max;
@@ -362,7 +531,6 @@ public class RollingBackgroundEngine : MonoBehaviour
             activeMountains[li] = new List<ActiveMountain>();
             recentPrefabs[li]   = new List<int>();
 
-            // Place frontier just off the left of the fill zone, then fill forward.
             nextSpawnX[li] = camLeft - cfg.despawnBehindCamera;
 
             float fillEnd = camRight + cfg.spawnAheadOfCamera;
@@ -382,7 +550,6 @@ public class RollingBackgroundEngine : MonoBehaviour
             MountainLayerConfig cfg        = layers[li];
             float               layerSpeed = speed * cfg.parallaxSpeed;
 
-            // 1. Move frontier and active mountains left at this layer's speed.
             nextSpawnX[li] -= layerSpeed;
 
             List<ActiveMountain> active = activeMountains[li];
@@ -393,15 +560,13 @@ public class RollingBackgroundEngine : MonoBehaviour
                 Vector3 p = m.obj.transform.position;
                 p.x -= layerSpeed;
                 m.obj.transform.position = p;
-                active[i] = m;  // struct — must write back
+                active[i] = m;
             }
 
-            // 2. Spawn new mountains while frontier is inside the spawn window.
             float spawnLimit = camRight + cfg.spawnAheadOfCamera;
             while (nextSpawnX[li] < spawnLimit)
                 PlantMountain(li);
 
-            // 3. Cull mountains that have fully exited camera left.
             for (int i = active.Count - 1; i >= 0; i--)
             {
                 ActiveMountain m = active[i];
@@ -426,65 +591,49 @@ public class RollingBackgroundEngine : MonoBehaviour
         MountainLayerConfig cfg = layers[li];
         if (cfg.prefabs == null || cfg.prefabs.Length == 0)
         {
-            // Push frontier anyway to avoid an infinite loop.
-            nextSpawnX[li] += cfg.minSpacing;
+            nextSpawnX[li] += cfg.GetMinSpacing();
             return;
         }
 
         int        pi  = PickPrefabIndex(li);
         GameObject obj = GetFromPool(mountainPools[li][pi], cfg.prefabs[pi]);
 
-        // Get per-prefab Y offset
         float yOffset = GetPrefabYOffset(cfg, pi);
         float finalY = cfg.yPosition + yOffset;
 
-        // Position
         float z = cfg.zPosition + Random.Range(-cfg.zVariation, cfg.zVariation);
         obj.transform.position = new Vector3(nextSpawnX[li], finalY, z);
 
-        // Per-prefab rotation: read from prefabRotations[pi] if it exists, else identity.
         Vector3 eulerRot = (cfg.prefabRotations != null && pi < cfg.prefabRotations.Length)
             ? cfg.prefabRotations[pi]
             : Vector3.zero;
         obj.transform.rotation = Quaternion.Euler(eulerRot);
 
-        // Scale: start from the prefab's own localScale, multiply per-axis by scaleMultiplier,
-        // then optionally apply a uniform random variation on top.
         Vector3 prefabScale = cfg.prefabs[pi].transform.localScale;
         Vector3 baseScale   = Vector3.Scale(prefabScale, cfg.scaleMultiplier);
         float   randomMult  = cfg.randomScale ? Random.Range(cfg.minRandomScale, cfg.maxRandomScale) : 1f;
         obj.transform.localScale = baseScale * randomMult;
 
-        // Apply visual settings based on toggle
         if (cfg.applyTint)
-        {
             ApplyTint(obj, cfg.tint, cfg.sortingOrder);
-        }
         else
         {
-            // Only set sorting order without touching materials/tint
             foreach (SpriteRenderer sr in obj.GetComponentsInChildren<SpriteRenderer>())
-            {
                 sr.sortingOrder = cfg.sortingOrder;
-            }
         }
 
         activeMountains[li].Add(new ActiveMountain { obj = obj, prefabIndex = pi });
 
-        // Record for anti-repeat, then advance the frontier.
         RecordRecentPrefab(li, pi, cfg);
-        nextSpawnX[li] += Random.Range(cfg.minSpacing, cfg.maxSpacing);
+        float minSpacing = cfg.GetMinSpacing();
+        float maxSpacing = cfg.GetMaxSpacing();
+        nextSpawnX[li] += Random.Range(minSpacing, maxSpacing);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
     //  PER-PREFAB Y OFFSET HELPER
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Gets the Y offset for a specific prefab index.
-    /// If prefabYOffsets array exists and has an entry for this index, use it.
-    /// Otherwise returns 0.
-    /// </summary>
     float GetPrefabYOffset(MountainLayerConfig cfg, int prefabIndex)
     {
         if (cfg.prefabYOffsets == null || cfg.prefabYOffsets.Length == 0)
@@ -509,17 +658,14 @@ public class RollingBackgroundEngine : MonoBehaviour
         List<int> recent     = recentPrefabs[li];
         int       windowSize = Mathf.Min(cfg.minUniqueBeforeRepeat, total - 1);
 
-        // Build exclusion set from the tail of recent history.
         var excluded = new HashSet<int>();
         for (int i = Mathf.Max(0, recent.Count - windowSize); i < recent.Count; i++)
             excluded.Add(recent[i]);
 
-        // Gather allowed candidates.
         var candidates = new List<int>(total);
         for (int i = 0; i < total; i++)
             if (!excluded.Contains(i)) candidates.Add(i);
 
-        // Fallback: all excluded (only 1 unique prefab exists).
         if (candidates.Count == 0) return Random.Range(0, total);
 
         return candidates[Random.Range(0, candidates.Count)];
@@ -548,7 +694,6 @@ public class RollingBackgroundEngine : MonoBehaviour
                 return pooled;
             }
         }
-        // Pool empty: instantiate a new instance, parented for scene tidiness.
         return Instantiate(prefab, transform);
     }
 
@@ -563,89 +708,59 @@ public class RollingBackgroundEngine : MonoBehaviour
     //  WIDTH MEASUREMENT HELPERS
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Read width from a prefab asset without instantiating it.
-    /// Works for 2D sprites and 3D meshes. Uses GetComponentInChildren so nested
-    /// renderer hierarchies (e.g. model root → mesh child) are handled correctly.
-    /// </summary>
     static float MeasurePrefabWidth(GameObject prefab)
     {
-        // 2D — sprite bounds are in local space and valid on prefab assets.
         SpriteRenderer sr = prefab.GetComponentInChildren<SpriteRenderer>();
         if (sr != null && sr.sprite != null)
             return sr.sprite.bounds.size.x * prefab.transform.localScale.x;
 
-        // 3D static mesh — sharedMesh.bounds is local-space, valid on prefab assets.
         MeshFilter mf = prefab.GetComponentInChildren<MeshFilter>();
         if (mf != null && mf.sharedMesh != null)
             return mf.sharedMesh.bounds.size.x * prefab.transform.localScale.x;
 
-        // 3D skinned mesh (characters, animated props).
         SkinnedMeshRenderer smr = prefab.GetComponentInChildren<SkinnedMeshRenderer>();
         if (smr != null && smr.sharedMesh != null)
             return smr.sharedMesh.bounds.size.x * prefab.transform.localScale.x;
 
-        // Nothing found — caller will warn and use override/fallback.
         return 0f;
     }
 
-    /// <summary>
-    /// Read world-space width from a live (active, in-scene) GameObject.
-    /// Renderer.bounds is the most reliable source for both 2D and 3D objects
-    /// because it reflects the actual rendered extents including scale.
-    /// </summary>
     static float MeasureActiveWidth(GameObject obj)
     {
-        // SpriteRenderer first so 2D objects don't accidentally hit a Collider.
         SpriteRenderer sr = obj.GetComponentInChildren<SpriteRenderer>();
         if (sr != null) return sr.bounds.size.x;
 
-        // Any 3D renderer (MeshRenderer, SkinnedMeshRenderer, etc.).
         Renderer r = obj.GetComponentInChildren<Renderer>();
         if (r != null) return r.bounds.size.x;
 
-        // Collider fallbacks — useful when the renderer is disabled or absent.
         Collider c3 = obj.GetComponentInChildren<Collider>();
         if (c3 != null) return c3.bounds.size.x;
 
         Collider2D c2 = obj.GetComponentInChildren<Collider2D>();
         if (c2 != null) return c2.bounds.size.x;
 
-        return 1f;  // last resort
+        return 1f;
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
     //  TINT HELPER
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Apply a tint colour to every renderer in the hierarchy.
-    ///   • SpriteRenderer  → sr.color  (2D)
-    ///   • Any Renderer    → MaterialPropertyBlock with _Color + _BaseColor
-    ///                       (_Color = Built-in / _BaseColor = URP / HDRP)
-    /// sortingOrder is only applied to SpriteRenderers; for 3D objects depth is
-    /// controlled by the Z position set in PlantMountain.
-    /// </summary>
     static void ApplyTint(GameObject obj, Color tint, int sortingOrder)
     {
-        // 2D sprites
         foreach (SpriteRenderer sr in obj.GetComponentsInChildren<SpriteRenderer>())
         {
             sr.color        = tint;
             sr.sortingOrder = sortingOrder;
         }
 
-        // 3D renderers — use a property block so we don't dirty the shared material.
         var mpb = new MaterialPropertyBlock();
         foreach (Renderer r in obj.GetComponentsInChildren<Renderer>())
         {
-            // Skip sprite renderers already handled above.
             if (r is SpriteRenderer) continue;
 
-            // Only apply if it's a material that supports these properties
             r.GetPropertyBlock(mpb);
             
-            // Check if the material has the property before setting it
             Material mat = r.sharedMaterial;
             if (mat != null)
             {
@@ -660,6 +775,42 @@ public class RollingBackgroundEngine : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
+    //  SPACING CALCULATOR (based on spawnDensity)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    void CalculateAllLayerSpacings()
+    {
+        foreach (var cfg in layers)
+        {
+            if (cfg.useDensitySlider)
+            {
+                float invDensity = 1f - cfg.spawnDensity;
+                
+                float sparseMin = 20f;
+                float sparseMax = 35f;
+                float denseMin  = 1f;
+                float denseMax  = 3f;
+
+                float t = Mathf.Pow(invDensity, 1.5f);
+                
+                cfg.calculatedMinSpacing = Mathf.Lerp(denseMin, sparseMin, t);
+                cfg.calculatedMaxSpacing = Mathf.Lerp(denseMax, sparseMax, t);
+            }
+            else
+            {
+                if (cfg.minSpacing <= 0f) cfg.minSpacing = 1f;
+                if (cfg.maxSpacing <= 0f) cfg.maxSpacing = cfg.minSpacing + 2f;
+                if (cfg.maxSpacing < cfg.minSpacing) cfg.maxSpacing = cfg.minSpacing;
+                
+                cfg.calculatedMinSpacing = cfg.minSpacing;
+                cfg.calculatedMaxSpacing = cfg.maxSpacing;
+            }
+            
+            cfg.wasUsingDensitySlider = cfg.useDensitySlider;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
     //  PUBLIC API
     // ─────────────────────────────────────────────────────────────────────────────
 
@@ -670,13 +821,34 @@ public class RollingBackgroundEngine : MonoBehaviour
     public float GetCurrentSpeed()               => scrollSpeed * speedMultiplier;
 
     /// <summary>
+    /// Enable or disable the train tracks at runtime.
+    /// </summary>
+    public void SetTracksEnabled(bool enabled)
+    {
+        enableTracks = enabled;
+        if (!enabled)
+        {
+            foreach (var track in activeTracks)
+                if (track != null)
+                    ReturnToPool(trackPool, track);
+            activeTracks.Clear();
+        }
+        else
+        {
+            InitialiseTracks();
+        }
+    }
+
+    /// <summary>
     /// Resets and re-initialises everything — useful after a scene restart or speed change.
     /// </summary>
     public void Rebuild()
     {
-        // Return all active objects to their pools.
         foreach (var tile in activeGround) ReturnToPool(groundPool, tile);
         activeGround.Clear();
+
+        foreach (var track in activeTracks) ReturnToPool(trackPool, track);
+        activeTracks.Clear();
 
         if (activeMountains != null)
         {
@@ -689,8 +861,10 @@ public class RollingBackgroundEngine : MonoBehaviour
             }
         }
 
+        CalculateAllLayerSpacings();
         RefreshCameraBounds();
         InitialiseGround();
+        InitialiseTracks();
         InitialiseMountains();
     }
 
@@ -709,13 +883,19 @@ public class RollingBackgroundEngine : MonoBehaviour
         float h  = camHalfH * 2f;
         float w  = camHalfW * 2f;
 
-        // Camera frustum
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireCube(mainCamera.transform.position, new Vector3(w, h, 1f));
 
         // Ground Y line
         Gizmos.color = Color.green;
         Gizmos.DrawLine(new Vector3(cx - 60, groundY, 0), new Vector3(cx + 60, groundY, 0));
+
+        // Track Y line
+        if (enableTracks)
+        {
+            Gizmos.color = new Color(0.5f, 0.3f, 0.1f); // Brown for tracks
+            Gizmos.DrawLine(new Vector3(cx - 60, trackY, trackZ), new Vector3(cx + 60, trackY, trackZ));
+        }
 
         Color[] colours = { Color.cyan, Color.magenta, Color.blue, Color.red, Color.white };
 
@@ -724,27 +904,24 @@ public class RollingBackgroundEngine : MonoBehaviour
             MountainLayerConfig cfg = layers[li];
             Gizmos.color = colours[li % colours.Length];
 
-            // Layer Y line
             Gizmos.DrawLine(
                 new Vector3(cx - 60, cfg.yPosition, cfg.zPosition),
                 new Vector3(cx + 60, cfg.yPosition, cfg.zPosition));
 
-            // Spawn window (right)
             float spawnEdge = camRight + cfg.spawnAheadOfCamera;
             Gizmos.DrawLine(
                 new Vector3(spawnEdge, cy - h * 0.5f, 0),
                 new Vector3(spawnEdge, cy + h * 0.5f, 0));
 
-            // Despawn window (left)
             float despawnEdge = camLeft - cfg.despawnBehindCamera;
             Gizmos.DrawLine(
                 new Vector3(despawnEdge, cy - h * 0.5f, 0),
                 new Vector3(despawnEdge, cy + h * 0.5f, 0));
 
-            // Layer label
+            string mode = cfg.useDensitySlider ? $"density:{cfg.spawnDensity:F2}" : $"spacing:{cfg.minSpacing}-{cfg.maxSpacing}";
             UnityEditor.Handles.Label(
                 new Vector3(spawnEdge + 0.2f, cfg.yPosition + 0.3f * li, cfg.zPosition),
-                $"{cfg.name}  speed×{cfg.parallaxSpeed}");
+                $"{cfg.name}  speed×{cfg.parallaxSpeed}  {mode}");
         }
     }
 #endif
