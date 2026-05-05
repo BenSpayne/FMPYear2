@@ -1,31 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
-
-/// <summary>
-/// Parallax scrolling background engine with tiling ground, train tracks, and multi-layer mountains.
-/// 
-/// KEY DESIGN:
-///   - Each mountain layer owns a "spawn frontier" (nextSpawnX). Every frame that frontier
-///     moves left at the same speed as the layer. When it falls inside the spawn window
-///     (camRight + spawnAheadOfCamera) we plant a mountain and push the frontier right by
-///     a random spacing. This replaces the fragile fixedMountainCount approach and can
-///     never produce burst-spawns or gaps.
-///   - Ground and Tracks use the same pattern: track the rightmost tile, extend while its right edge
-///     is inside camRight + spawnBuffer. No maxPieces cap to cause cut-offs.
-///   - Pooling is built-in (per-layer, per-prefab queues) so no external pool manager is needed.
-/// 
-/// SETUP:
-///   1. Assign groundPrefab and trackPrefab (any GameObject with a SpriteRenderer or Collider for width measurement).
-///   2. Add one MountainLayerConfig per depth layer, assign prefabs arrays.
-///   3. Tune parallaxSpeed, spacing, yPosition and tint per layer.
-///   Nothing else is required.
-/// </summary>
 public class RollingBackgroundEngine : MonoBehaviour
 {
-    // ─────────────────────────────────────────────────────────────────────────────
-    //  INSPECTOR
-    // ─────────────────────────────────────────────────────────────────────────────
-
     [Header("Scroll")]
     [Tooltip("World units per second at 1× multiplier")]
     [SerializeField] private float scrollSpeed = 5f;
@@ -34,8 +10,6 @@ public class RollingBackgroundEngine : MonoBehaviour
 
     [Header("Camera")]
     [SerializeField] private Camera mainCamera;
-
-    // ── Ground ───────────────────────────────────────────────────────────────────
 
     [Header("Ground")]
     [Tooltip("Prefab to tile. Must have a SpriteRenderer (or Collider) so width can be read.")]
@@ -52,8 +26,6 @@ public class RollingBackgroundEngine : MonoBehaviour
              "ground mesh (e.g. ProceduralGroundGenerator) whose mesh doesn't exist on the prefab asset. " +
              "Leave at 0 to auto-detect from the prefab's SpriteRenderer or MeshFilter.")]
     [SerializeField] private float groundTileWidthOverride = 0f;
-
-    // ── Train Tracks ─────────────────────────────────────────────────────────────
 
     [Header("Train Tracks")]
     [Tooltip("Enable/disable the train track spawning system.")]
@@ -74,7 +46,6 @@ public class RollingBackgroundEngine : MonoBehaviour
     [Range(0f, 2f)]
     [SerializeField] private float trackSpeedMultiplier = 1f;
 
-    // ── Mountain layers ───────────────────────────────────────────────────────────
 
     [Header("Mountain Layers")]
     [SerializeField] private MountainLayerConfig[] layers = new MountainLayerConfig[]
