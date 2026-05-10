@@ -6,6 +6,8 @@ using TMPro;
 
 public class StatsManager : MonoBehaviour
 {
+    // scripts
+    
     // Player Stats
     public int playerLevel = 0;
     public TextMeshProUGUI playerLevelUI;
@@ -27,8 +29,8 @@ public class StatsManager : MonoBehaviour
 
     public bool inOverdrive = false;
     public TextMeshProUGUI overdriveText;
-    public int trainSpeed = 3;
     public int engineHealth = 3;
+    public int trainSpeed = 3;
     [SerializeField] private Image engineSpeedBar1;
     [SerializeField] private Image engineSpeedBar2;
     [SerializeField] private Image engineSpeedBar3;
