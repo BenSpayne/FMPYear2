@@ -1623,8 +1623,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 300
     zVariation: 1
-    spawnAheadOfCamera: 300
-    despawnBehindCamera: 300
+    spawnAheadOfCamera: 400
+    despawnBehindCamera: 400
     useDensitySlider: 0
     spawnDensity: 0.5
     minSpacing: 50
@@ -1660,8 +1660,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 117.3
     zVariation: 3
-    spawnAheadOfCamera: 200
-    despawnBehindCamera: 200
+    spawnAheadOfCamera: 250
+    despawnBehindCamera: 250
     useDensitySlider: 0
     spawnDensity: 0.5
     minSpacing: 5
@@ -1694,8 +1694,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 64.5
     zVariation: 0.2
-    spawnAheadOfCamera: 150
-    despawnBehindCamera: 150
+    spawnAheadOfCamera: 180
+    despawnBehindCamera: 180
     useDensitySlider: 0
     spawnDensity: 0.5
     minSpacing: 45
@@ -1727,8 +1727,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 32.8
     zVariation: 3
-    spawnAheadOfCamera: 80
-    despawnBehindCamera: 80
+    spawnAheadOfCamera: 90
+    despawnBehindCamera: 90
     useDensitySlider: 1
     spawnDensity: 1
     minSpacing: 5
@@ -1764,8 +1764,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 43.2
     zVariation: 3
-    spawnAheadOfCamera: 50
-    despawnBehindCamera: 50
+    spawnAheadOfCamera: 80
+    despawnBehindCamera: 80
     useDensitySlider: 0
     spawnDensity: 0.05
     minSpacing: 5
@@ -1793,8 +1793,8 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 17.9
     zVariation: 3
-    spawnAheadOfCamera: 50
-    despawnBehindCamera: 50
+    spawnAheadOfCamera: 70
+    despawnBehindCamera: 70
     useDensitySlider: 0
     spawnDensity: 0.05
     minSpacing: 8
@@ -1823,12 +1823,75 @@ MonoBehaviour:
     yPosition: 0
     zPosition: 5.9
     zVariation: 3
-    spawnAheadOfCamera: 40
-    despawnBehindCamera: 40
+    spawnAheadOfCamera: 60
+    despawnBehindCamera: 60
     useDensitySlider: 1
     spawnDensity: 0.4
     minSpacing: 5
     maxSpacing: 100
+    scaleMultiplier: {x: 1, y: 1, z: 1}
+    randomScale: 1
+    minRandomScale: 0.6
+    maxRandomScale: 1.3
+    applyTint: 0
+    tint: {r: 0.27033642, g: 0.4245283, b: 0.27033642, a: 0}
+    sortingOrder: 0
+    minUniqueBeforeRepeat: 1
+    calculatedMinSpacing: 0
+    calculatedMaxSpacing: 0
+    wasUsingDensitySlider: 0
+  - name: Bushes
+    prefabs:
+    - {fileID: 3120078143102902743, guid: 8c0e6747f18c944af9f366f1264fc2af, type: 3}
+    - {fileID: 3120078143102902743, guid: 8c0e6747f18c944af9f366f1264fc2af, type: 3}
+    prefabYOffsets: []
+    prefabRotations:
+    - {x: 0, y: 0, z: 0}
+    - {x: 0, y: 90, z: 0}
+    - {x: 0, y: 45, z: 0}
+    parallaxSpeed: 1
+    yPosition: 0
+    zPosition: -18.44
+    zVariation: 3
+    spawnAheadOfCamera: 50
+    despawnBehindCamera: 50
+    useDensitySlider: 1
+    spawnDensity: 0.4
+    minSpacing: 5
+    maxSpacing: 100
+    scaleMultiplier: {x: 1, y: 1, z: 1}
+    randomScale: 1
+    minRandomScale: 0.6
+    maxRandomScale: 1.3
+    applyTint: 0
+    tint: {r: 0.27033642, g: 0.4245283, b: 0.27033642, a: 0}
+    sortingOrder: 0
+    minUniqueBeforeRepeat: 1
+    calculatedMinSpacing: 0
+    calculatedMaxSpacing: 0
+    wasUsingDensitySlider: 0
+  - name: Trees
+    prefabs:
+    - {fileID: 3120078143102902743, guid: 8c0e6747f18c944af9f366f1264fc2af, type: 3}
+    - {fileID: 3120078143102902743, guid: 8c0e6747f18c944af9f366f1264fc2af, type: 3}
+    - {fileID: 7056705073108760247, guid: b65c896543a9f4051bed6bc69aa00d5b, type: 3}
+    - {fileID: 7056705073108760247, guid: b65c896543a9f4051bed6bc69aa00d5b, type: 3}
+    prefabYOffsets: []
+    prefabRotations:
+    - {x: 0, y: 0, z: 0}
+    - {x: 0, y: 90, z: 0}
+    - {x: 0, y: 45, z: 0}
+    - {x: 0, y: -90, z: 0}
+    parallaxSpeed: 1
+    yPosition: 0
+    zPosition: -8
+    zVariation: 3
+    spawnAheadOfCamera: 50
+    despawnBehindCamera: 50
+    useDensitySlider: 1
+    spawnDensity: 0.4
+    minSpacing: 4
+    maxSpacing: 25
     scaleMultiplier: {x: 1, y: 1, z: 1}
     randomScale: 1
     minRandomScale: 0.6
@@ -3337,6 +3400,7 @@ GameObject:
   - component: {fileID: 1823688470}
   - component: {fileID: 1823688468}
   - component: {fileID: 1823688472}
+  - component: {fileID: 1823688473}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -3627,17 +3691,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   trainManager: {fileID: 21030802}
   trainEngine: {fileID: 21030801}
-  smoothSpeed: 2
+  smoothSpeed: 3
   moveSmoothSpeed: 2
   defaultOffset: {x: -16, y: 10.25, z: -26.6}
   extraHeightPerCarriage: 1
   extraDistancePerCarriage: 2
-  maxExtraHeight: 6
-  maxExtraDistance: 10
+  maxExtraHeight: 4
+  maxExtraDistance: 8
   extraFOVPerCarriage: 2
-  maxExtraFOV: 15
+  maxExtraFOV: 6
   fovSmoothSpeed: 2
   startAdjustAtCarriageCount: 1
+--- !u!114 &1823688473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1823688464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b20f7622c8524fd2a0526d7d2c6e53c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraEffect
+  sensitivity: 10
+  smoothSpeed: 5
+  rotationLimit: {x: 30, y: 20}
+  cinemachineCamera: {fileID: 1823688471}
+  returnSpeed: 2
+  cinemachineHardLookAt: {fileID: 1823688470}
 --- !u!4 &1862115130 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8619943366814046220, guid: 85a93a174f6c0474a88e0b7316333d67, type: 3}
