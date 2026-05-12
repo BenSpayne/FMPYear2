@@ -1,33 +1,14 @@
 using UnityEngine;
-using System;
 
-[CreateAssetMenu(fileName = "Engine", menuName = "Scriptable Objects/Engine")]
+[CreateAssetMenu(fileName = "EngineData", menuName = "Train System/Engine Data")]
 public class EngineScriptableObject : ScriptableObject
 {
-    // Carriages
-    private int factoryCarriages = 0;
-    private int wheatGeneratorCarriages = 0;
-    private int entertainmentCarriages = 0;
-    private int medicalwardCarriages = 0;
-    private int residentialCarriages = 0;
-
-    // Engine
-    [SerializeField] public int engineSpeed = 3;
-    public int engineHealth = 3;
-    public int engineLevel = 1;
-    public bool overdriveEnabled = false;
-    public int overdriveCooldownTime = 60;
-    private int engineCarriage = 0;
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    [Header("Engine Settings")]
+    [SerializeField] private GameObject enginePrefab; // Now used
+    [SerializeField] private float engineLength = 2.52f;
+    [SerializeField] private Vector3 enginePosition = new Vector3(2.52f, 0.42f, -0.31f);
+    
+    public GameObject EnginePrefab => enginePrefab;
+    public float EngineLength => engineLength;
+    public Vector3 EnginePosition => enginePosition;
 }
