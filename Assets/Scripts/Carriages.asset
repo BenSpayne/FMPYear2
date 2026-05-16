@@ -16,7 +16,7 @@ MonoBehaviour:
   - carriageTag: Residential
     count: 1
   - carriageTag: Medical
-    count: 1
+    count: 0
   - carriageTag: Factory
     count: 0
   - carriageTag: Wheat
