@@ -7,30 +7,18 @@ using TMPro;
 public class StatsManager : MonoBehaviour
 {
     // scripts
+
+    [SerializeField] private GameProgressScriptableObject GameData;
+    [SerializeField] private PlayerLevelScriptableObject PlayerLevelData;
+    [SerializeField] private EngineScriptableObject EngineData;
     
     // Player Stats
-    public int playerLevel = 0;
-    public TextMeshProUGUI playerLevelUI;
-    public double XP = 0;
-    public int materials = 10;
-    public int coins = 10;
-    public int wheat = 5;
-
-    // Population Stats
-
-    public int population = 250;
-    public TextMeshProUGUI populationUI;
-    public int hungerPercent = 100;
-    public int happinessPercent = 100;
-    public int healthPrecent = 100;
-    public int productivityPrecent = 100;
-
-    // Train Stats
-
-    public bool inOverdrive = false;
+    public TextMeshProUGUI playerLevelText;
+    public TextMeshProUGUI playerXPText;
+    public TextMeshProUGUI materialCountText;
+    public TextMeshProUGUI coinCountText;
+    public TextMeshProUGUI populationText;
     public TextMeshProUGUI overdriveText;
-    public int engineHealth = 3;
-    public int trainSpeed = 3;
     [SerializeField] private Image engineSpeedBar1;
     [SerializeField] private Image engineSpeedBar2;
     [SerializeField] private Image engineSpeedBar3;
@@ -45,13 +33,16 @@ public class StatsManager : MonoBehaviour
 
     void SetCountText()
     {
-        playerLevelUI.text = playerLevel.ToString();
-        populationUI.text = population.ToString();
+        playerLevelText.text = PlayerLevelData.playerLevel.ToString();
+        playerXPText.text = PlayerLevelData.playerXP.ToString();
+        materialCountText.text = GameData.materialCounter.ToString();
+        coinCountText.text = GameData.coinCounter.ToString();
+        populationText.text = GameData.population.ToString();
     }
 
     void overdriveUpdate()
     {
-        if (inOverdrive == true)
+        if (EngineData.inOverdrive == true)
         {
             overdriveText.enabled = true;
         }
@@ -63,7 +54,7 @@ public class StatsManager : MonoBehaviour
 
     void updateEngineSpeedBar()
     {
-        switch (trainSpeed)
+        switch (GameData.trainSpeed)
         {
             case 3:
                 engineSpeedBar1.enabled = true;
@@ -96,7 +87,7 @@ public class StatsManager : MonoBehaviour
 
     void updateEngineHealth()
     {
-        switch (engineHealth)
+        switch (GameData.engineHealth)
         {
             case 3:
                 healthGood.enabled = true;

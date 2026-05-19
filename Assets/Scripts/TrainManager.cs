@@ -451,23 +451,49 @@ public class TrainManager : MonoBehaviour
     {
         return new List<string>(trainPartTags);
     }
+
+    // Add this public method to your TrainManager class
+    public void AddCarriage(string carriageTag)
+    {
+        // Check if carriage type exists in prefab mapping
+        GameObject prefab = GetPrefabByTag(carriageTag);
+        if (prefab == null)
+        {
+            Debug.LogError($"Cannot add carriage: No prefab found for tag '{carriageTag}'!");
+            return;
+        }
+        
+        // Add the carriage to the back
+        AddCarriageAtBack(carriageTag);
+        
+        // Sync to ScriptableObject
+        SyncToScriptableObject();
+        
+        // Update camera
+        if (cameraController != null)
+            cameraController.UpdateCameraPosition(trainParts.Count - 1);
+        
+        Debug.Log($"Added {carriageTag} carriage. Total carriages: {trainParts.Count - 1}");
+    }
+        
+    
     
     // Debug visualization
     private void OnDrawGizmos()
     {
         if (!showDebugVisuals) return;
-        
+
         if (spawnPoint != null)
         {
             Gizmos.color = Color.blue;
             Gizmos.DrawSphere(spawnPoint.position, 0.15f);
-            
+
             // Draw engine spawn position with offset
             Vector3 engineSpawnPos = new Vector3(spawnPoint.position.x, spawnPoint.position.y + engineYOffset, spawnPoint.position.z);
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(engineSpawnPos, 0.15f);
         }
-        
+
         foreach (var part in trainParts)
         {
             if (part != null)
@@ -477,11 +503,11 @@ public class TrainManager : MonoBehaviour
                 {
                     Gizmos.color = part.tag == "Engine" ? Color.red : Color.green;
                     Gizmos.DrawWireCube(collider.bounds.center, collider.bounds.size);
-                    
+
                     // Draw connection points
                     Vector3 backPoint = new Vector3(collider.bounds.min.x, collider.bounds.center.y, collider.bounds.center.z);
                     Vector3 frontPoint = new Vector3(collider.bounds.max.x, collider.bounds.center.y, collider.bounds.center.z);
-                    
+
                     Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere(backPoint, 0.08f);
                     Gizmos.color = Color.cyan;

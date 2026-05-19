@@ -7,7 +7,6 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Transform trainEngine;
     
     [Header("Camera Settings")]
-    [SerializeField] private float smoothSpeed = 3f;
     [SerializeField] private float moveSmoothSpeed = 2f;
     
     [Header("Base Camera Position")]

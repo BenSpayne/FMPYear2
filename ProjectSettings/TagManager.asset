@@ -9,6 +9,7 @@ TagManager:
   - Factory
   - Wheat
   - Engine
+  - TrainEngine
   layers:
   - Default
   - TransparentFX
@@ -41,7 +42,7 @@ TagManager:
   - 
   - 
   - 
-  - 
+  - Outline
   m_SortingLayers:
   - name: Default
     uniqueID: 0
