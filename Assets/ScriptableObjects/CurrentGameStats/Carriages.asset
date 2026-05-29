@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarriageScriptableObject
   carriageCounts:
   - carriageTag: Residential
-    count: 3
+    count: 1
   - carriageTag: Factory
     count: 1
   - carriageTag: Medical
